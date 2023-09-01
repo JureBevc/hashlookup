@@ -11,6 +11,8 @@ import (
 
 var dbInstance *sql.DB = nil
 
+var dbRequestCounter map[string]int = make(map[string]int)
+
 func createDBInstance() {
 	psqlconn := os.Getenv("DB_CONN")
 	if psqlconn == "" {
@@ -84,7 +86,7 @@ func GetMessageByHash(algorithmName string, hash string) (string, error) {
 	message := ""
 	err := db.QueryRow("select input from hashes where "+
 		" algorithm_id = (select id from algorithms where name = $1) "+
-		" and output = $2", algorithmName, hash).Scan(&message)
+		" and output = $2 limit 1", algorithmName, hash).Scan(&message)
 
 	return message, err
 }
@@ -95,7 +97,63 @@ func GetHashByMessage(algorithmName string, message string) (string, error) {
 	hash := ""
 	err := db.QueryRow("select output from hashes where "+
 		" algorithm_id = (select id from algorithms where name = $1) "+
-		" and input = $2", algorithmName, message).Scan(&hash)
+		" and input = $2 limit 1", algorithmName, message).Scan(&hash)
 
 	return hash, err
+}
+
+func DeleteTables() {
+	log.Println("Dropping tables")
+	query := `
+	DROP TABLE IF EXISTS public.hashes;
+	DROP TABLE IF EXISTS public.algorithms;
+`
+	db := DBInstance()
+	_, err := db.Query(query)
+	if err == nil {
+		log.Println("Tables dropped")
+	} else {
+		log.Println(err)
+	}
+}
+
+func CreateTables() {
+	log.Println("Creating tables")
+	query := `
+	CREATE TABLE IF NOT EXISTS  public.algorithms (
+		id serial4 NOT NULL,
+		"name" varchar(255) NOT NULL,
+		CONSTRAINT algorithms_pkey PRIMARY KEY (id),
+		CONSTRAINT unique_algorithm_name UNIQUE (name)
+	);
+
+	CREATE TABLE IF NOT EXISTS  public.hashes (
+		id serial4 NOT NULL,
+		algorithm_id int4 NOT NULL,
+		"input" text NOT NULL,
+		"output" text NOT NULL,
+		CONSTRAINT hashes_pkey_1 PRIMARY KEY (id),
+		CONSTRAINT unique_algorithm_input_1 UNIQUE (algorithm_id, input)
+	);
+
+	ALTER TABLE public.hashes DROP CONSTRAINT IF EXISTS hashes_algorithm_id_fkey;
+	ALTER TABLE public.hashes ADD CONSTRAINT hashes_algorithm_id_fkey FOREIGN KEY (algorithm_id) REFERENCES public.algorithms(id);	
+
+	INSERT INTO public.algorithms ("name")
+	VALUES ('sha256') ON CONFLICT DO NOTHING;
+	
+	INSERT INTO public.algorithms ("name")
+	VALUES ('sha1') ON CONFLICT DO NOTHING;
+	
+	INSERT INTO public.algorithms ("name")
+	VALUES ('md5') ON CONFLICT DO NOTHING;
+
+`
+	db := DBInstance()
+	_, err := db.Query(query)
+	if err == nil {
+		log.Println("Tables created")
+	} else {
+		log.Println(err)
+	}
 }

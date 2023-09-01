@@ -1,19 +1,19 @@
-package main
+package inserter
 
 import (
 	"bufio"
+	"fmt"
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	util "hashlookup/util"
 
 	_ "github.com/lib/pq"
-
-	"github.com/joho/godotenv"
 )
 
-func createHashesFromFileContent(filePath string, algorithmName string) {
+func createHashesFromFileContent(filePath string, algorithmName string, hashFn util.HashFunc) {
 	hashesToInsert := []util.HashesToInsertType{}
 
 	file, err := os.Open(filePath)
@@ -30,7 +30,7 @@ func createHashesFromFileContent(filePath string, algorithmName string) {
 		lineCount += 1
 		line := scanner.Text()
 		line = strings.TrimSpace(line)
-		hash := util.MD5Hash(line)
+		hash := hashFn(line)
 
 		hashesToInsert = append(hashesToInsert, util.HashesToInsertType{
 			Id:     algorithmId,
@@ -38,7 +38,7 @@ func createHashesFromFileContent(filePath string, algorithmName string) {
 			Output: hash,
 		})
 
-		if len(hashesToInsert) >= 1000 {
+		if len(hashesToInsert) >= 10000 {
 			util.InsertMultipleAlgorithmHashes(hashesToInsert)
 			hashesToInsert = []util.HashesToInsertType{}
 		}
@@ -54,14 +54,14 @@ func createHashesFromFileContent(filePath string, algorithmName string) {
 
 }
 
-func main() {
-	log.Println("Running...")
-	godotenv.Load()
-
-	//filePath := "./data/passwords/10-million-password-list-top-1000000.txt"
-	filePath := "./data/passwords/xato-net-10-million-passwords.txt"
-	algorithmName := "MD-5"
-
-	createHashesFromFileContent(filePath, algorithmName)
+func CreateLookup(filePath string, algorithmName string) {
+	hashFn, err := util.GetHashFuncFromName(algorithmName)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	startTime := time.Now()
+	createHashesFromFileContent(filePath, algorithmName, hashFn)
+	log.Printf("Finished creating hashses: %s\n", time.Since(startTime))
 	log.Println("Finished.")
 }

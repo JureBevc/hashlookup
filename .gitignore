@@ -24,4 +24,7 @@ go.work
 data/passwords
 
 #Env
-.env
+.env*
+
+# Database
+db/

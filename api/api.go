@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"encoding/json"
@@ -66,6 +66,7 @@ func HandleLookupMessage(w http.ResponseWriter, r *http.Request) {
 	hash, err := util.GetHashByMessage(algorithmName, message)
 
 	if err != nil {
+		log.Println(err)
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"hash": nil,
 		})
@@ -76,8 +77,8 @@ func HandleLookupMessage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func main() {
-	log.Println("Running service...")
+func StartAPI(port int) {
+	log.Println("Running API...")
 	godotenv.Load()
 	router := mux.NewRouter()
 
@@ -85,5 +86,6 @@ func main() {
 	router.HandleFunc("/lookup/message", HandleLookupMessage).Methods("GET")
 	router.HandleFunc("/", HandleHome).Methods("GET")
 
-	http.ListenAndServe(":80", router)
+	log.Printf("Listening on port %d\n", port)
+	http.ListenAndServe(fmt.Sprintf(":%d", port), router)
 }
