@@ -6,12 +6,11 @@ import (
 	"log"
 	"os"
 
+	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 )
 
 var dbInstance *sql.DB = nil
-
-var dbRequestCounter map[string]int = make(map[string]int)
 
 func createDBInstance() {
 	psqlconn := os.Getenv("DB_CONN")
@@ -102,10 +101,55 @@ func GetHashByMessage(algorithmName string, message string) (string, error) {
 	return hash, err
 }
 
+func GetRainbowInputsFromOutputs(algorithmName string, outputs []string) (*[]string, error) {
+	db := DBInstance()
+
+	rows, err := db.Query("select input from rainbow where "+
+		" algorithm_id = (select id from algorithms where name = $1) "+
+		" and output = any($2)", algorithmName, pq.Array(outputs))
+
+	if err != nil {
+		return &[]string{}, err
+	}
+
+	var inputs []string
+	var input string
+	for rows.Next() {
+		err := rows.Scan(&input)
+		CheckErrorPanic(err)
+		inputs = append(inputs, input)
+	}
+
+	return &inputs, err
+}
+
+func InsertMultipleRainbowEntries(hashesToInsert []HashesToInsertType) {
+	db := DBInstance()
+
+	sqlStr := "insert into rainbow (algorithm_id, input, output) values "
+	vals := []interface{}{}
+
+	valId := 1
+	for _, row := range hashesToInsert {
+		sqlStr += fmt.Sprintf("($%d, $%d, $%d),", valId, valId+1, valId+2)
+		vals = append(vals, row.Id, row.Input, row.Output)
+		valId += 3
+	}
+	//trim the last ,
+	sqlStr = sqlStr[0 : len(sqlStr)-1]
+	sqlStr += " on conflict (algorithm_id, input) do nothing"
+
+	stmt, _ := db.Prepare(sqlStr)
+	stmt.Exec(vals...)
+
+	stmt.Close()
+}
+
 func DeleteTables() {
 	log.Println("Dropping tables")
 	query := `
 	DROP TABLE IF EXISTS public.hashes;
+	DROP TABLE IF EXISTS public.rainbow;
 	DROP TABLE IF EXISTS public.algorithms;
 `
 	db := DBInstance()
@@ -136,8 +180,18 @@ func CreateTables() {
 		CONSTRAINT unique_algorithm_input_1 UNIQUE (algorithm_id, input)
 	);
 
+	CREATE TABLE IF NOT EXISTS  public.rainbow (
+		id serial4 NOT NULL,
+		algorithm_id int4 NOT NULL,
+		"input" text NOT NULL,
+		"output" text NOT NULL,
+		CONSTRAINT rainbow_pkey_1 PRIMARY KEY (id),
+		CONSTRAINT unique_algorithm_input_2 UNIQUE (algorithm_id, input)
+	);
+
 	ALTER TABLE public.hashes DROP CONSTRAINT IF EXISTS hashes_algorithm_id_fkey;
-	ALTER TABLE public.hashes ADD CONSTRAINT hashes_algorithm_id_fkey FOREIGN KEY (algorithm_id) REFERENCES public.algorithms(id);	
+	ALTER TABLE public.hashes ADD CONSTRAINT hashes_algorithm_id_fkey FOREIGN KEY (algorithm_id) REFERENCES public.algorithms(id);
+	ALTER TABLE public.rainbow ADD CONSTRAINT rainbow_algorithm_id_fkey FOREIGN KEY (algorithm_id) REFERENCES public.algorithms(id);
 
 	INSERT INTO public.algorithms ("name")
 	VALUES ('sha256') ON CONFLICT DO NOTHING;

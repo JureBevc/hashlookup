@@ -37,9 +37,12 @@ func CheckErrorPanic(err error) {
 	}
 }
 
+func FormatAlgorithmName(algorithmName string) string {
+	return strings.ReplaceAll(strings.ToLower(algorithmName), "-", "")
+}
+
 func GetHashFuncFromName(algorithmName string) (HashFunc, error) {
-	formattedName := strings.ReplaceAll(strings.ToLower(algorithmName), "-", "")
-	switch formattedName {
+	switch algorithmName {
 	case "sha256":
 		return SHA256Hash, nil
 	case "sha1":

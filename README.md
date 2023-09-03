@@ -1,27 +1,52 @@
 # hashlookup
 
-# How to run
+## How to use
 
-Create tables in database
+### Database management
+- Create tables
 ```
-go run .\main.go create-tables
-```
-
-Drop tables from database
-```
-go run .\main.go delete-tables
+go run hashlookup.go create-tables
 ```
 
-Create lookup table
+- Drop tables
 ```
-go run .\main.go create-lookup -h [algorithm] -f [filepath]
-```
-
-Start API
-```
-go run .\main.go start-api
+go run hashlookup.go delete-tables
 ```
 
+- Reset/clear tables (equivalent to calling drop and create tables)
+```
+go run hashlookup.go reset-tables
+```
+
+### Populating tables / generating data
+- Create simple reverse lookup table
+```
+go run hashlookup.go create-lookup -alg [algorithm] -file [filepath]
+```
+
+- Create rainbow table
+```
+go run hashlookup.go create-rainbow -alg [algorithm] -file [filepath]
+```
+
+### Query the data
+
+- Query the simple lookup table
+```
+go run hashlookup.go check-lookup -alg [algorithm] -hash [hash]
+```
+
+- Query the rainbow table
+```
+go run hashlookup.go check-rainbow -alg [algorithm] -hash [hash]
+```
+
+- You can also start an API to query via GET requests
+```
+go run hashlookup.go start-api
+```
+
+### Build
 Build executable
 ```
 go build

@@ -62,6 +62,5 @@ func CreateLookup(filePath string, algorithmName string) {
 	}
 	startTime := time.Now()
 	createHashesFromFileContent(filePath, algorithmName, hashFn)
-	log.Printf("Finished creating hashses: %s\n", time.Since(startTime))
-	log.Println("Finished.")
+	log.Printf("Finished. Creating lookup table took %s.\n", time.Since(startTime))
 }
