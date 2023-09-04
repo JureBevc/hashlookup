@@ -1,5 +1,7 @@
 # hashlookup
 
+A tool for creating reverse hash lookup tables written in Go. 
+
 ## How to use
 
 ### Database management
